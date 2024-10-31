@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plain Text to Table Converter</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #inputBox { width: 100%; height: 150px; margin-bottom: 20px; font-size: 16px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        #downloadButtons { margin-top: 20px; }
+        button { padding: 10px 15px; margin-right: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Plain Text to Table Converter</h1>
+    <p>Paste your plain text data below. The system will try to detect columns based on spaces or tabs between values.</p>
+    
+    <textarea id="inputBox" placeholder="Paste your text data here..."></textarea>
+    
+    <div id="tableContainer"></div>
+    
+    <div id="downloadButtons">
+        <button onclick="downloadCSV()">Download CSV</button>
+        <button onclick="downloadExcel()">Download Excel</button>
+    </div>
+    
+    <script>
+        const inputBox = document.getElementById("inputBox");
+        const tableContainer = document.getElementById("tableContainer");
+
+        inputBox.addEventListener("input", updateTable);
+
+        function updateTable() {
+            const text = inputBox.value.trim();
+            if (!text) {
+                tableContainer.innerHTML = "";
+                return;
+            }
+
+            // Detect rows by splitting on newline
+            const rows = text.split("\n").map(row => row.trim());
+
+            // Detect columns by splitting on multiple spaces or tabs
+            const parsedData = rows.map(row => row.split(/\s{2,}|\t/));
+
+            // Get the longest row for header consistency
+            const columnCount = Math.max(...parsedData.map(row => row.length));
+            const headers = Array.from({ length: columnCount }, (_, i) => `Column ${i + 1}`);
+
+            // Build HTML table
+            let tableHTML = "<table><thead><tr>";
+            headers.forEach(header => tableHTML += `<th>${header}</th>`);
+            tableHTML += "</tr></thead><tbody>";
+
+            parsedData.forEach(row => {
+                tableHTML += "<tr>";
+                row.forEach(cell => tableHTML += `<td>${cell}</td>`);
+                // Add empty cells for rows shorter than the longest row
+                for (let i = row.length; i < columnCount; i++) tableHTML += `<td></td>`;
+                tableHTML += "</tr>";
+            });
+            tableHTML += "</tbody></table>";
+
+            tableContainer.innerHTML = tableHTML;
+        }
+
+        function downloadCSV() {
+            const text = inputBox.value.trim();
+            if (!text) return alert("No data to download!");
+
+            const rows = text.split("\n").map(row => row.trim().split(/\s{2,}|\t/));
+            const csvContent = rows.map(row => row.join(",")).join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "table_data.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadExcel() {
+            const text = inputBox.value.trim();
+            if (!text) return alert("No data to download!");
+
+            const rows = text.split("\n").map(row => row.trim().split(/\s{2,}|\t/));
+            const worksheet = XLSX.utils.aoa_to_sheet(rows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+            XLSX.writeFile(workbook, "table_data.xlsx");
+        }
+    </script>
+
+    <!-- Add the XLSX library for Excel file generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.1/xlsx.full.min.js"></script>
+</body>
+</html>
